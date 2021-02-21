@@ -2,6 +2,7 @@
 #define _XFS_TYPES_H_
 
 #include <stdint.h>
+#include <stdio.h>
 #include <uuid/uuid.h>
 
 typedef uint64_t xfs_ino_t;
@@ -66,5 +67,8 @@ typedef struct xfs_sb {
   uint32_t sb_logsunit;
   uint32_t sb_features2;
 } xfs_sb_t;
+
+void BeToHostXfsSb(xfs_sb_t *sb);
+size_t FreadXfsSb(FILE *f, xfs_sb_t *sb);
 
 #endif
