@@ -28,6 +28,7 @@ void ParseArgs(struct CommandLineArgs *out, int argc, char **argv) {
     }
   } else if (argc == 3 && strcmp(argv[1], "open") == 0) {
     out->Mode = MODE_OPEN;
+    out->Open.DevicePath = argv[2];
   } else {
     out->Mode = MODE_INCORRECT;
   }
