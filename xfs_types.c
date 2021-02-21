@@ -1,8 +1,8 @@
-#include "XfsTypes.h"
+#include "xfs_types.h"
 #include <endian.h>
 #include <features.h>
 
-void BeToHostXfsSb(xfs_sb_t *sb) {
+void betoh_xfs_sb(xfs_sb_t *sb) {
   sb->sb_magicnum = be32toh(sb->sb_magicnum);
   sb->sb_blocksize = be32toh(sb->sb_blocksize);
   sb->sb_dblocks = be64toh(sb->sb_dblocks);
@@ -36,35 +36,30 @@ void BeToHostXfsSb(xfs_sb_t *sb) {
   sb->sb_features2 = be32toh(sb->sb_features2);
 }
 
-void BeToHostXfsAgi(xfs_agi_t *agi) {
-  agi->agi_magicnum = be32toh(agi->agi_magicnum);
-  agi->agi_versionnum = be32toh(agi->agi_versionnum);
-  agi->agi_seqno = be32toh(agi->agi_seqno);
-  agi->agi_length = be32toh(agi->agi_length);
-  agi->agi_count = be32toh(agi->agi_count);
-  agi->agi_root = be32toh(agi->agi_root);
-  agi->agi_level = be32toh(agi->agi_level);
-  agi->agi_freecount = be32toh(agi->agi_freecount);
-  agi->agi_newino = be32toh(agi->agi_newino);
-  agi->agi_dirino = be32toh(agi->agi_dirino);
-  for (int i = 0; i < 64; ++i)
-    agi->agi_unlinked[i] = be32toh(agi->agi_unlinked[i]);
+void betoh_xfs_timestamp(xfs_timestamp_t *t) {
+  t->t_sec = be32toh(t->t_sec);
+  t->t_nsec = be32toh(t->t_nsec);
 }
 
-void BeToHostXfsBtreeSblock(xfs_btree_sblock_t *bb) {
-  bb->bb_magic = be32toh(bb->bb_magic);
-  bb->bb_level = be16toh(bb->bb_level);
-  bb->bb_numrecs = be16toh(bb->bb_numrecs);
-  bb->bb_leftsib = be32toh(bb->bb_leftsib);
-  bb->bb_rightsib = be32toh(bb->bb_rightsib);
-}
-
-void BeToHostXfsInobtRec(xfs_inobt_rec_t *ir) {
-  ir->ir_startino = be32toh(ir->ir_startino);
-  ir->ir_freecount = be32toh(ir->ir_freecount);
-  ir->ir_free = be64toh(ir->ir_free);
-}
-
-void BeToHostXfsInobtKey(xfs_inobt_key_t *ir) {
-  ir->ir_startino = be32toh(ir->ir_startino);
+void betoh_xfs_dinode_core(xfs_dinode_core_t *di) {
+  di->di_magic = be16toh(di->di_magic);
+  di->di_mode = be16toh(di->di_mode);
+  di->di_onlink = be16toh(di->di_onlink);
+  di->di_uid = be32toh(di->di_uid);
+  di->di_gid = be32toh(di->di_gid);
+  di->di_nlink = be32toh(di->di_nlink);
+  di->di_projid = be16toh(di->di_projid);
+  di->di_flushiter = be16toh(di->di_flushiter);
+  betoh_xfs_timestamp(&di->di_atime);
+  betoh_xfs_timestamp(&di->di_mtime);
+  betoh_xfs_timestamp(&di->di_ctime);
+  di->di_size = be64toh(di->di_size);
+  di->di_nblocks = be64toh(di->di_nblocks);
+  di->di_extsize = be32toh(di->di_extsize);
+  di->di_nextents = be32toh(di->di_nextents);
+  di->di_anextents = be16toh(di->di_anextents);
+  di->di_dmevmask = be32toh(di->di_dmevmask);
+  di->di_dmstate = be16toh(di->di_dmstate);
+  di->di_flags = be16toh(di->di_flags);
+  di->di_gen = be32toh(di->di_gen);
 }

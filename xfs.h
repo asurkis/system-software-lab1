@@ -1,6 +1,6 @@
 #ifndef _XFS_H_
 #define _XFS_H_
 
-#include "XfsTypes.h"
+#include "xfs_types.h"
 
 #endif

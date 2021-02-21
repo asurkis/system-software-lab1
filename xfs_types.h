@@ -68,58 +68,26 @@ typedef struct xfs_sb {
   uint32_t sb_features2;
 } xfs_sb_t;
 
-typedef struct xfs_agi {
-  uint32_t agi_magicnum;
-  uint32_t agi_versionnum;
-  uint32_t agi_seqno;
-  uint32_t agi_length;
-  uint32_t agi_count;
-  uint32_t agi_root;
-  uint32_t agi_level;
-  uint32_t agi_freecount;
-  uint32_t agi_newino;
-  uint32_t agi_dirino;
-  uint32_t agi_unlinked[64];
-} xfs_agi_t;
-
-typedef struct xfs_btree_sblock {
-  uint32_t bb_magic;
-  uint16_t bb_level;
-  uint16_t bb_numrecs;
-  uint32_t bb_leftsib;
-  uint32_t bb_rightsib;
-} xfs_btree_sblock_t;
-
-typedef struct xfs_btree_sblock xfs_inobt_block_t;
-
-typedef struct xfs_inobt_rec {
-  uint32_t ir_startino;
-  uint32_t ir_freecount;
-  uint64_t ir_free;
-} xfs_inobt_rec_t;
-
-typedef struct xfs_inobt_key {
-  uint32_t ir_startino;
-} xfs_inobt_key_t;
-typedef uint32_t xfs_inobt_ptr_t;
-
 typedef struct xfs_timestamp {
   int32_t t_sec;
   int32_t t_nsec;
 } xfs_timestamp_t;
 
+typedef int64_t xfs_fsize_t;
+typedef int16_t xfs_aextnum_t;
+
 typedef struct xfs_dinode_core {
-  __uint16_t di_magic;
-  __uint16_t di_mode;
-  __int8_t di_version;
-  __int8_t di_format;
-  __uint16_t di_onlink;
-  __uint32_t di_uid;
-  __uint32_t di_gid;
-  __uint32_t di_nlink;
-  __uint16_t di_projid;
-  __uint8_t di_pad[8];
-  __uint16_t di_flushiter;
+  uint16_t di_magic;
+  uint16_t di_mode;
+  int8_t di_version;
+  int8_t di_format;
+  uint16_t di_onlink;
+  uint32_t di_uid;
+  uint32_t di_gid;
+  uint32_t di_nlink;
+  uint16_t di_projid;
+  uint8_t di_pad[8];
+  uint16_t di_flushiter;
   xfs_timestamp_t di_atime;
   xfs_timestamp_t di_mtime;
   xfs_timestamp_t di_ctime;
@@ -128,34 +96,32 @@ typedef struct xfs_dinode_core {
   xfs_extlen_t di_extsize;
   xfs_extnum_t di_nextents;
   xfs_aextnum_t di_anextents;
-  __uint8_t di_forkoff;
-  __int8_t di_aformat;
-  __uint32_t di_dmevmask;
-  __uint16_t di_dmstate;
-  __uint16_t di_flags;
-  __uint32_t di_gen;
+  uint8_t di_forkoff;
+  int8_t di_aformat;
+  uint32_t di_dmevmask;
+  uint16_t di_dmstate;
+  uint16_t di_flags;
+  uint32_t di_gen;
 } xfs_dinode_core_t;
 
-union {
-  xfs_bmdr_block_t di_bmbt;
-  xfs_bmbt_rec_t di_bmx[1];
-  xfs_dir2_sf_t di_dir2sf;
-  char di_c[1];
-  xfs_dev_t di_dev;
-  uuid_t di_muuid;
-  char di_symlink[1];
-} di_u;
+// union {
+//   xfs_bmdr_block_t di_bmbt;
+//   xfs_bmbt_rec_t di_bmx[1];
+//   xfs_dir2_sf_t di_dir2sf;
+//   char di_c[1];
+//   xfs_dev_t di_dev;
+//   uuid_t di_muuid;
+//   char di_symlink[1];
+// } di_u;
 
-union {
-  xfs_bmdr_block_t di_abmbt;
-  xfs_bmbt_rec_t di_abmx[1];
-  xfs_attr_shortform_t di_attrsf;
-} di_a;
+// union {
+//   xfs_bmdr_block_t di_abmbt;
+//   xfs_bmbt_rec_t di_abmx[1];
+//   xfs_attr_shortform_t di_attrsf;
+// } di_a;
 
-void BeToHostXfsSb(xfs_sb_t *sb);
-void BeToHostXfsAgi(xfs_agi_t *agi);
-void BeToHostXfsBtreeSblock(xfs_btree_sblock_t *bb);
-void BeToHostXfsInobtRec(xfs_inobt_rec_t *ir);
-void BeToHostXfsInobtKey(xfs_inobt_key_t *ir);
+void betoh_xfs_sb(xfs_sb_t *sb);
+void betoh_xfs_timestamp(xfs_timestamp_t *t);
+void betoh_xfs_dinode_core(xfs_dinode_core_t *di);
 
 #endif

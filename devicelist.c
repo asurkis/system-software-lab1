@@ -1,8 +1,8 @@
-#include "DisplayDeviceList.h"
+#include "devicelist.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-void DisplayDeviceList(int HeaderInterval) {
+void print_devices(int HeaderInterval) {
   FILE *f = fopen("/proc/mounts", "r");
   if (!f) {
     return;

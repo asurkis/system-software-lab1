@@ -1,8 +1,8 @@
-#include "CommandLineArgs.h"
+#include "argparse.h"
 #include <stdio.h>
 #include <string.h>
 
-void PrintUsage(char *ExePath) {
+void print_usage(char *ExePath) {
   puts("Usage:");
   printf("\t%s list [header interval]"
          "\n\t\t-- list mounted devices"
@@ -14,7 +14,7 @@ void PrintUsage(char *ExePath) {
   printf("\t%s open <device>\n\t\t-- open an xfs filesystem\n", ExePath);
 }
 
-void ParseArgs(struct CommandLineArgs *out, int argc, char **argv) {
+void argparse(struct command_line_args *out, int argc, char **argv) {
   if (argc >= 2 && strcmp(argv[1], "list") == 0) {
     out->Mode = MODE_LIST;
     out->List.HeaderInterval = -1;
