@@ -104,6 +104,55 @@ typedef struct xfs_dinode_core {
   uint32_t di_gen;
 } xfs_dinode_core_t;
 
+typedef struct xfs_dir2_sf {
+  xfs_dir2_sf_hdr_t hdr;
+  xfs_dir2_sf_entry_t list[1];
+} xfs_dir2_sf_t;
+
+typedef struct xfs_dir2_sf_hdr {
+  uint8_t count;
+  uint8_t i8count;
+  xfs_dir2_inou_t parent;
+} xfs_dir2_sf_hdr_t;
+
+typedef struct xfs_dir2_sf_entry {
+  uint8_t namelen;
+  xfs_dir2_sf_off_t offset;
+  uint8_t name[1];
+  xfs_dir2_inou_t inumber;
+} xfs_dir2_sf_entry_t;
+
+typedef struct {
+  uint8_t i[8];
+} xfs_dir2_ino8_t;
+
+typedef struct {
+  uint8_t i[4];
+} xfs_dir2_ino4_t;
+
+typedef union {
+  xfs_dir2_ino8_t i8;
+  xfs_dir2_ino4_t i4;
+} xfs_dir2_inou_t;
+
+typedef struct xfs_dir2_sf {
+  xfs_dir2_sf_hdr_t hdr;
+  xfs_dir2_sf_entry_t list[1];
+} xfs_dir2_sf_t;
+
+typedef struct xfs_dir2_sf_hdr {
+  uint8_t count;
+  uint8_t i8count;
+  xfs_dir2_inou_t parent;
+} xfs_dir2_sf_hdr_t;
+
+typedef struct xfs_dir2_sf_entry {
+  uint8_t namelen;
+  xfs_dir2_sf_off_t offset;
+  uint8_t name[1];
+  xfs_dir2_inou_t inumber;
+} xfs_dir2_sf_entry_t;
+
 // union {
 //   xfs_bmdr_block_t di_bmbt;
 //   xfs_bmbt_rec_t di_bmx[1];
