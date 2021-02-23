@@ -8,14 +8,14 @@ void sample_xfs(const char *device_path) {
 
   xfs_sb_t sb;
   fread(&sb, sizeof(xfs_sb_t), 1, f);
-  betoh_xfs_sb(&sb);
+  dtoh_xfs_sb(&sb);
   printf("Magicnum 0x%08x\n", sb.sb_magicnum);
 
   printf("\nSeeking 0x%x\n", sb.sb_inodesize * sb.sb_rootino);
   fseek(f, sb.sb_inodesize * sb.sb_rootino, SEEK_SET);
   xfs_dinode_core_t di;
   fread(&di, sizeof(xfs_dinode_core_t), 1, f);
-  betoh_xfs_dinode_core(&di);
+  dtoh_xfs_dinode_core(&di);
   printf("Magic 0x%04x\n", di.di_magic);
 
   fclose(f);

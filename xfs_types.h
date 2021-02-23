@@ -1,33 +1,42 @@
 #ifndef _XFS_TYPES_H_
 #define _XFS_TYPES_H_
 
-#include <stdint.h>
 #include <stdio.h>
+#include <sys/types.h>
 #include <uuid/uuid.h>
 
-typedef uint64_t xfs_ino_t;
-typedef int64_t xfs_off_t;
-typedef int64_t xfs_daddr_t;
-typedef uint32_t xfs_agnumber_t;
-typedef uint32_t xfs_agblock_t;
-typedef uint32_t xfs_extlen_t;
-typedef int32_t xfs_extnum_t;
-typedef uint32_t xfs_dablk_t;
-typedef uint32_t xfs_dahash_t;
-typedef uint64_t xfs_dfsbno_t;
-typedef uint64_t xfs_drfsbno_t;
-typedef uint64_t xfs_drtbno_t;
-typedef uint64_t xfs_dfiloff_t;
-typedef uint64_t xfs_dfilblks_t;
+typedef __uint8_t __u8;
+typedef __uint16_t __be16, __le16;
+typedef __uint32_t __be32, __le32;
+typedef __uint64_t __be64, __le64;
+
+typedef __uint64_t xfs_ino_t;
+typedef __int64_t xfs_off_t;
+typedef __int64_t xfs_daddr_t;
+typedef __uint32_t xfs_agnumber_t;
+typedef __uint32_t xfs_agblock_t;
+typedef __uint32_t xfs_extlen_t;
+typedef __int32_t xfs_extnum_t;
+typedef __int16_t xfs_aextnum_t;
+typedef __uint32_t xfs_dablk_t;
+typedef __uint32_t xfs_dahash_t;
+typedef __uint64_t xfs_fsblock_t;
+typedef __uint64_t xfs_rfsblock_t;
+typedef __uint64_t xfs_rtblock_t;
+typedef __uint64_t xfs_fileoff_t;
+typedef __uint64_t xfs_filblks_t;
+typedef __int64_t xfs_fsize_t;
+
+typedef __int64_t xfs_lsn_t;
 
 typedef struct xfs_sb {
-  uint32_t sb_magicnum;
-  uint32_t sb_blocksize;
-  xfs_drfsbno_t sb_dblocks;
-  xfs_drfsbno_t sb_rblocks;
-  xfs_drtbno_t sb_rextents;
+  __uint32_t sb_magicnum;
+  __uint32_t sb_blocksize;
+  xfs_rfsblock_t sb_dblocks;
+  xfs_rfsblock_t sb_rblocks;
+  xfs_rtblock_t sb_rextents;
   uuid_t sb_uuid;
-  xfs_dfsbno_t sb_logstart;
+  xfs_fsblock_t sb_logstart;
   xfs_ino_t sb_rootino;
   xfs_ino_t sb_rbmino;
   xfs_ino_t sb_rsumino;
@@ -36,141 +45,99 @@ typedef struct xfs_sb {
   xfs_agnumber_t sb_agcount;
   xfs_extlen_t sb_rbmblocks;
   xfs_extlen_t sb_logblocks;
-  uint16_t sb_versionnum;
-  uint16_t sb_sectsize;
-  uint16_t sb_inodesize;
-  uint16_t sb_inopblock;
+  __uint16_t sb_versionnum;
+  __uint16_t sb_sectsize;
+  __uint16_t sb_inodesize;
+  __uint16_t sb_inopblock;
   char sb_fname[12];
-  uint8_t sb_blocklog;
-  uint8_t sb_sectlog;
-  uint8_t sb_inodelog;
-  uint8_t sb_inopblog;
-  uint8_t sb_agblklog;
-  uint8_t sb_rextslog;
-  uint8_t sb_inprogress;
-  uint8_t sb_imax_pct;
-  uint64_t sb_icount;
-  uint64_t sb_ifree;
-  uint64_t sb_fdblocks;
-  uint64_t sb_frextents;
+  __uint8_t sb_blocklog;
+  __uint8_t sb_sectlog;
+  __uint8_t sb_inodelog;
+  __uint8_t sb_inopblog;
+  __uint8_t sb_agblklog;
+  __uint8_t sb_rextslog;
+  __uint8_t sb_inprogress;
+  __uint8_t sb_imax_pct;
+  __uint64_t sb_icount;
+  __uint64_t sb_ifree;
+  __uint64_t sb_fdblocks;
+  __uint64_t sb_frextents;
   xfs_ino_t sb_uquotino;
   xfs_ino_t sb_gquotino;
-  uint16_t sb_qflags;
-  uint8_t sb_flags;
-  uint8_t sb_shared_vn;
+  __uint16_t sb_qflags;
+  __uint8_t sb_flags;
+  __uint8_t sb_shared_vn;
   xfs_extlen_t sb_inoalignmt;
-  uint32_t sb_unit;
-  uint32_t sb_width;
-  uint8_t sb_dirblklog;
-  uint8_t sb_logsectlog;
-  uint16_t sb_logsectsize;
-  uint32_t sb_logsunit;
-  uint32_t sb_features2;
+  __uint32_t sb_unit;
+  __uint32_t sb_width;
+  __uint8_t sb_dirblklog;
+  __uint8_t sb_logsectlog;
+  __uint16_t sb_logsectsize;
+  __uint32_t sb_logsunit;
+  __uint32_t sb_features2;
+  __uint32_t sb_bad_features2;
+
+  /* version 5 superblock fields start here */
+  __uint32_t sb_features_compat;
+  __uint32_t sb_features_ro_compat;
+  __uint32_t sb_features_incompat;
+  __uint32_t sb_features_log_incompat;
+  __uint32_t sb_crc;
+  xfs_extlen_t sb_spino_align;
+  xfs_ino_t sb_pquotino;
+  xfs_lsn_t sb_lsn;
+  uuid_t sb_meta_uuid;
+  xfs_ino_t sb_rrmapino;
 } xfs_sb_t;
 
 typedef struct xfs_timestamp {
-  int32_t t_sec;
-  int32_t t_nsec;
+  __int32_t t_sec;
+  __int32_t t_nsec;
 } xfs_timestamp_t;
 
-typedef int64_t xfs_fsize_t;
-typedef int16_t xfs_aextnum_t;
-
 typedef struct xfs_dinode_core {
-  uint16_t di_magic;
-  uint16_t di_mode;
-  int8_t di_version;
-  int8_t di_format;
-  uint16_t di_onlink;
-  uint32_t di_uid;
-  uint32_t di_gid;
-  uint32_t di_nlink;
-  uint16_t di_projid;
-  uint8_t di_pad[8];
-  uint16_t di_flushiter;
+  __uint16_t di_magic;
+  __uint16_t di_mode;
+  __int8_t di_version;
+  __int8_t di_format;
+  __uint16_t di_onlink;
+  __uint32_t di_uid;
+  __uint32_t di_gid;
+  __uint32_t di_nlink;
+  __uint16_t di_projid;
+  __uint16_t di_projid_hi;
+  __uint8_t di_pad[6];
+  __uint16_t di_flushiter;
   xfs_timestamp_t di_atime;
   xfs_timestamp_t di_mtime;
   xfs_timestamp_t di_ctime;
   xfs_fsize_t di_size;
-  xfs_drfsbno_t di_nblocks;
+  xfs_rfsblock_t di_nblocks;
   xfs_extlen_t di_extsize;
   xfs_extnum_t di_nextents;
   xfs_aextnum_t di_anextents;
-  uint8_t di_forkoff;
-  int8_t di_aformat;
-  uint32_t di_dmevmask;
-  uint16_t di_dmstate;
-  uint16_t di_flags;
-  uint32_t di_gen;
+  __uint8_t di_forkoff;
+  __int8_t di_aformat;
+  __uint32_t di_dmevmask;
+  __uint16_t di_dmstate;
+  __uint16_t di_flags;
+  __uint32_t di_gen;
+  /* di_next_unlinked is the only non-core field in the old dinode */
+  __be32 di_next_unlinked;
+  /* version 5 filesystem (inode version 3) fields start here */
+  __le32 di_crc;
+  __be64 di_changecount;
+  __be64 di_lsn;
+  __be64 di_flags2;
+  __be32 di_cowextsize;
+  __u8 di_pad2[12];
+  xfs_timestamp_t di_crtime;
+  __be64 di_ino;
+  uuid_t di_uuid;
 } xfs_dinode_core_t;
 
-typedef struct xfs_dir2_sf {
-  xfs_dir2_sf_hdr_t hdr;
-  xfs_dir2_sf_entry_t list[1];
-} xfs_dir2_sf_t;
-
-typedef struct xfs_dir2_sf_hdr {
-  uint8_t count;
-  uint8_t i8count;
-  xfs_dir2_inou_t parent;
-} xfs_dir2_sf_hdr_t;
-
-typedef struct xfs_dir2_sf_entry {
-  uint8_t namelen;
-  xfs_dir2_sf_off_t offset;
-  uint8_t name[1];
-  xfs_dir2_inou_t inumber;
-} xfs_dir2_sf_entry_t;
-
-typedef struct {
-  uint8_t i[8];
-} xfs_dir2_ino8_t;
-
-typedef struct {
-  uint8_t i[4];
-} xfs_dir2_ino4_t;
-
-typedef union {
-  xfs_dir2_ino8_t i8;
-  xfs_dir2_ino4_t i4;
-} xfs_dir2_inou_t;
-
-typedef struct xfs_dir2_sf {
-  xfs_dir2_sf_hdr_t hdr;
-  xfs_dir2_sf_entry_t list[1];
-} xfs_dir2_sf_t;
-
-typedef struct xfs_dir2_sf_hdr {
-  uint8_t count;
-  uint8_t i8count;
-  xfs_dir2_inou_t parent;
-} xfs_dir2_sf_hdr_t;
-
-typedef struct xfs_dir2_sf_entry {
-  uint8_t namelen;
-  xfs_dir2_sf_off_t offset;
-  uint8_t name[1];
-  xfs_dir2_inou_t inumber;
-} xfs_dir2_sf_entry_t;
-
-// union {
-//   xfs_bmdr_block_t di_bmbt;
-//   xfs_bmbt_rec_t di_bmx[1];
-//   xfs_dir2_sf_t di_dir2sf;
-//   char di_c[1];
-//   xfs_dev_t di_dev;
-//   uuid_t di_muuid;
-//   char di_symlink[1];
-// } di_u;
-
-// union {
-//   xfs_bmdr_block_t di_abmbt;
-//   xfs_bmbt_rec_t di_abmx[1];
-//   xfs_attr_shortform_t di_attrsf;
-// } di_a;
-
-void betoh_xfs_sb(xfs_sb_t *sb);
-void betoh_xfs_timestamp(xfs_timestamp_t *t);
-void betoh_xfs_dinode_core(xfs_dinode_core_t *di);
+void dtoh_xfs_sb(xfs_sb_t *sb);
+void dtoh_xfs_timestamp(xfs_timestamp_t *t);
+void dtoh_xfs_dinode_core(xfs_dinode_core_t *di);
 
 #endif
