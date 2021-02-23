@@ -28,6 +28,7 @@ typedef __uint64_t xfs_filblks_t;
 typedef __int64_t xfs_fsize_t;
 
 typedef __int64_t xfs_lsn_t;
+typedef __u8 xfs_dir2_sf_off_t[2];
 
 typedef struct xfs_sb {
   __uint32_t sb_magicnum;
@@ -90,10 +91,51 @@ typedef struct xfs_sb {
   xfs_ino_t sb_rrmapino;
 } xfs_sb_t;
 
+typedef struct {
+  __uint8_t i[8];
+} xfs_dir2_ino8_t;
+
+typedef struct {
+  __uint8_t i[4];
+} xfs_dir2_ino4_t;
+
+typedef union {
+  xfs_dir2_ino8_t i8;
+  xfs_dir2_ino4_t i4;
+} xfs_dir2_inou_t;
+
+typedef struct xfs_dir2_sf_hdr {
+  __uint8_t count;
+  __uint8_t i8count;
+  xfs_dir2_inou_t parent;
+} xfs_dir2_sf_hdr_t;
+
+typedef struct xfs_dir2_sf_entry {
+  __uint8_t namelen;
+  xfs_dir2_sf_off_t offset;
+  __uint8_t name[1];
+  __uint8_t ftype;
+  xfs_dir2_inou_t inumber;
+} xfs_dir2_sf_entry_t;
+
+typedef struct xfs_dir2_sf {
+  xfs_dir2_sf_hdr_t hdr;
+  xfs_dir2_sf_entry_t list[1];
+} xfs_dir2_sf_t;
+
 typedef struct xfs_timestamp {
   __int32_t t_sec;
   __int32_t t_nsec;
 } xfs_timestamp_t;
+
+typedef enum xfs_dinode_fmt {
+  XFS_DINODE_FMT_DEV,
+  XFS_DINODE_FMT_LOCAL,
+  XFS_DINODE_FMT_EXTENTS,
+  XFS_DINODE_FMT_BTREE,
+  XFS_DINODE_FMT_UUID,
+  XFS_DINODE_FMT_RMAP,
+} xfs_dinode_fmt_t;
 
 typedef struct xfs_dinode_core {
   __uint16_t di_magic;
@@ -136,8 +178,19 @@ typedef struct xfs_dinode_core {
   uuid_t di_uuid;
 } xfs_dinode_core_t;
 
+#define XFS_DINODE_V2_SIZE 100
+#define XFS_DINODE_V3_SIZE 176
+
+static inline size_t xfs_dinode_size(xfs_dinode_core_t *di) {
+  return di->di_version < 3 ? XFS_DINODE_V2_SIZE
+                            : XFS_DINODE_V3_SIZE;
+}
+
 void dtoh_xfs_sb(xfs_sb_t *sb);
 void dtoh_xfs_timestamp(xfs_timestamp_t *t);
 void dtoh_xfs_dinode_core(xfs_dinode_core_t *di);
+
+void dtoh_xfs_dir2_sf_hdr(xfs_dir2_sf_hdr_t *sf);
+void dtoh_xfs_dir2_sf(xfs_dir2_sf_t *sf);
 
 #endif

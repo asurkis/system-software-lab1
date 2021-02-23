@@ -74,7 +74,7 @@ void dtoh_xfs_dinode_core(xfs_dinode_core_t *di) {
   di->di_flags = be16toh(di->di_flags);
   di->di_gen = be32toh(di->di_gen);
   /* di_next_unlinked is the only non-core field in the old dinode */
-  __be32 di_next_unlinked;
+  di->di_next_unlinked = be32toh(di->di_next_unlinked);
   /* version 5 filesystem (inode version 3) fields start here */
   di->di_crc = le32toh(di->di_crc);
   di->di_changecount = be64toh(di->di_changecount);
