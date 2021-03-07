@@ -3,6 +3,7 @@
 
 #include "xfs_types.h"
 
+/* 8-битная длина файла -- максимум 256 символов */
 #define FILENAME_BUFLEN 256
 
 typedef struct fm_xfs {
@@ -15,7 +16,7 @@ typedef enum fm_xfs_err {
   FM_XFS_ERR_NONE = 0,
   FM_XFS_ERR_DEVICE_NOT_FOUND,
   FM_XFS_ERR_DEVICE,
-  FM_XFS_ERR_DIRECTORY_NOT_FOUND,
+  FM_XFS_ERR_FILENAME_NOT_FOUND,
   FM_XFS_ERR_NOT_A_DIRECTORY
 } fm_xfs_err_t;
 

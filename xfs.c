@@ -35,6 +35,7 @@ static xfs_ino_t inode_number(xfs_dir2_inou_t u, int is64) {
 static void fm_xfs_ls_local_(fm_xfs_t *fm, void *dfork) {
   xfs_dir2_sf_t *sf = dfork;
   xfs_ino_t parent = inode_number(sf->hdr.parent, sf->hdr.i8count);
+  printf(". => %d\n", fm->ino_current_dir);
   printf(".. => %d\n", parent);
   // printf("%d/%d children/64 bit:\n", sf->hdr.count, sf->hdr.i8count);
   xfs_dir2_sf_entry_t *iter =
@@ -73,7 +74,6 @@ fm_xfs_err_t fm_xfs_ls(fm_xfs_t *fm) {
     return FM_XFS_ERR_DEVICE;
   xfs_dinode_core_t *di = inode_info;
   void *dfork = (void *)((char *)inode_info + xfs_dinode_size(di));
-  printf("di_format = %d\n", di->di_format);
   switch (di->di_format) {
   case XFS_DINODE_FMT_LOCAL:
     fm_xfs_ls_local_(fm, dfork);
@@ -85,15 +85,23 @@ fm_xfs_err_t fm_xfs_ls(fm_xfs_t *fm) {
     fm_xfs_ls_btree_(fm, dfork);
     break;
   }
+  return FM_XFS_ERR_NONE;
 }
 
 static fm_xfs_err_t fm_xfs_find_entry_local_(fm_xfs_t *fm, __uint8_t *ftype_out,
                                              ino_t *ino_out, void *dfork,
-                                             char const *dirname,
-                                             size_t dirnamelen) {
+                                             char const *filename,
+                                             size_t filenamelen) {
   xfs_dir2_sf_t *sf = dfork;
   xfs_ino_t parent = inode_number(sf->hdr.parent, sf->hdr.i8count);
-  if (dirnamelen == 2 && dirname[0] == '.' && dirname[1] == '.') {
+
+  if (filenamelen == 1 && filename[0] == '.') {
+    *ftype_out = XFS_DIR3_FT_DIR;
+    *ino_out = fm->ino_current_dir;
+    return FM_XFS_ERR_NONE;
+  }
+
+  if (filenamelen == 2 && filename[0] == '.' && filename[1] == '.') {
     *ftype_out = XFS_DIR3_FT_DIR;
     *ino_out = parent;
     return FM_XFS_ERR_NONE;
@@ -110,11 +118,11 @@ static fm_xfs_err_t fm_xfs_find_entry_local_(fm_xfs_t *fm, __uint8_t *ftype_out,
                                        offsetof(xfs_dir2_sf_entry_t, name) +
                                        iter->namelen);
 
-    if (dirnamelen == iter->namelen) {
+    if (filenamelen == iter->namelen) {
       int j = 0;
-      while (j < dirnamelen && iter->name[j] == dirname[j])
+      while (j < filenamelen && iter->name[j] == filename[j])
         ++j;
-      if (j == dirnamelen) {
+      if (j == filenamelen) {
         *ftype_out = footer->ftype;
         *ino_out = inode_number(footer->inumber, sf->hdr.i8count);
         return FM_XFS_ERR_NONE;
@@ -127,23 +135,23 @@ static fm_xfs_err_t fm_xfs_find_entry_local_(fm_xfs_t *fm, __uint8_t *ftype_out,
                                 (sf->hdr.count ? sizeof(xfs_dir2_ino4_t)
                                                : sizeof(xfs_dir2_ino8_t)));
   }
-  return FM_XFS_ERR_DIRECTORY_NOT_FOUND;
+  return FM_XFS_ERR_FILENAME_NOT_FOUND;
 }
 
 static fm_xfs_err_t fm_xfs_find_entry_extents_(fm_xfs_t *fm,
                                                __uint8_t *ftype_out,
                                                ino_t *ino_out, void *dfork,
-                                               char const *dirname,
-                                               size_t dirnamelen) {}
+                                               char const *filename,
+                                               size_t filenamelen) {}
 
 static fm_xfs_err_t fm_xfs_find_entry_btree_(fm_xfs_t *fm, __uint8_t *ftype_out,
                                              ino_t *ino_out, void *dfork,
-                                             char const *dirname,
-                                             size_t dirnamelen) {}
+                                             char const *filename,
+                                             size_t filenamelen) {}
 
 fm_xfs_err_t fm_xfs_find_entry(fm_xfs_t *fm, __uint8_t *ftype_out,
-                               ino_t *ino_out, char const *dirname,
-                               size_t dirnamelen) {
+                               ino_t *ino_out, char const *filename,
+                               size_t filenamelen) {
   __uint16_t inodesize = be16toh(fm->sb.sb_inodesize);
   void *inode_info = alloca(inodesize);
   fseek(fm->f, inodesize * fm->ino_current_dir, SEEK_SET);
@@ -153,17 +161,14 @@ fm_xfs_err_t fm_xfs_find_entry(fm_xfs_t *fm, __uint8_t *ftype_out,
   void *dfork = (void *)((char *)inode_info + xfs_dinode_size(di));
   switch (di->di_format) {
   case XFS_DINODE_FMT_LOCAL:
-    return fm_xfs_find_entry_local_(fm, ftype_out, ino_out, dfork, dirname,
-                                    dirnamelen);
-    break;
+    return fm_xfs_find_entry_local_(fm, ftype_out, ino_out, dfork, filename,
+                                    filenamelen);
   case XFS_DINODE_FMT_EXTENTS:
-    return fm_xfs_find_entry_extents_(fm, ftype_out, ino_out, dfork, dirname,
-                                      dirnamelen);
-    break;
+    return fm_xfs_find_entry_extents_(fm, ftype_out, ino_out, dfork, filename,
+                                      filenamelen);
   case XFS_DINODE_FMT_BTREE:
-    return fm_xfs_find_entry_btree_(fm, ftype_out, ino_out, dfork, dirname,
-                                    dirnamelen);
-    break;
+    return fm_xfs_find_entry_btree_(fm, ftype_out, ino_out, dfork, filename,
+                                    filenamelen);
   }
 }
 
@@ -179,10 +184,92 @@ fm_xfs_err_t fm_xfs_cd(fm_xfs_t *fm, char const *dirname, size_t dirnamelen) {
   return FM_XFS_ERR_NONE;
 }
 
+static fm_xfs_err_t
+fm_xfs_print_file_extents_(fm_xfs_t *fm, xfs_dinode_core_t *core, void *dfork) {
+  struct xfs_bmbt_rec *list = dfork;
+  struct xfs_bmbt_irec unwrapped;
+  void *data = alloca(be32toh(fm->sb.sb_blocksize));
+  printf("File size: %d\n", be64toh(core->di_size));
+  for (xfs_extnum_t i = 0; i < be32toh(core->di_nextents); ++i) {
+    xfs_bmbt_disk_get_all(&list[i], &unwrapped);
+    printf("%d %d %d %d\n", unwrapped.br_startoff, unwrapped.br_startblock,
+           unwrapped.br_blockcount, unwrapped.br_state);
+    size_t s = be32toh(fm->sb.sb_blocksize) - unwrapped.br_startoff;
+    printf("Byte offset: %d\n",
+           unwrapped.br_startblock * be32toh(fm->sb.sb_blocksize) +
+               unwrapped.br_startoff);
+    fseek(fm->f,
+          unwrapped.br_startblock * be32toh(fm->sb.sb_blocksize) +
+              unwrapped.br_startoff,
+          SEEK_SET);
+    for (int j = 0; j < unwrapped.br_blockcount; ++j) {
+      printf("Reading %d bytes\n", s);
+      if (fread(data, s, 1, fm->f) != 1)
+        return FM_XFS_ERR_DEVICE;
+      fwrite(data, s, 1, stderr);
+      fflush(stderr);
+      s = be32toh(fm->sb.sb_blocksize);
+    }
+  }
+  /* void *data = alloca(fm->sb.sb_blocksize);
+  for (xfs_filblks_t i = 0; i < list->br_blockcount; ++i) {
+    if (list[i].br_state == XFS_EXT_NORM) {
+      size_t s = fm->sb.sb_blocksize - list[i].br_startoff;
+      fseek(fm->f,
+            fm->sb.sb_blocksize * list[i].br_startblock + list[i].br_startoff,
+            SEEK_SET);
+      if (fread(data, s, 1, fm->f) != 1)
+        return FM_XFS_ERR_DEVICE;
+      fwrite(data, s, 1, stdout);
+    }
+  }
+  fflush(stdout); */
+  return FM_XFS_ERR_NONE;
+}
+
+static fm_xfs_err_t
+fm_xfs_print_file_btree_(fm_xfs_t *fm, xfs_dinode_core_t *core, void *dfork) {
+  return FM_XFS_ERR_NONE;
+}
+
+static fm_xfs_err_t fm_xfs_print_file_(fm_xfs_t *fm, ino_t file) {
+  __uint16_t inodesize = be16toh(fm->sb.sb_inodesize);
+  void *inode_info = alloca(inodesize);
+  fseek(fm->f, inodesize * file, SEEK_SET);
+  if (fread(inode_info, inodesize, 1, fm->f) != 1)
+    return FM_XFS_ERR_DEVICE;
+  xfs_dinode_core_t *di = inode_info;
+  void *dfork = (void *)((char *)inode_info + xfs_dinode_size(di));
+  switch (di->di_format) {
+  case XFS_DINODE_FMT_EXTENTS:
+    return fm_xfs_print_file_extents_(fm, di, dfork);
+  case XFS_DINODE_FMT_BTREE:
+    return fm_xfs_print_file_btree_(fm, di, dfork);
+  }
+}
+
+#define CHKERR(expr)                                                           \
+  do {                                                                         \
+    err = expr;                                                                \
+    if (err != FM_XFS_ERR_NONE)                                                \
+      return err;                                                              \
+    printf("==== %s: %d ====\n", __FILE__, __LINE__);                          \
+  } while (0);
+
 fm_xfs_err_t fm_xfs_sample(fm_xfs_t *fm) {
-  fm_xfs_ls(fm);
-  fm_xfs_cd(fm, "dir1", 4);
-  fm_xfs_ls(fm);
-  fm_xfs_cd(fm, "..", 2);
-  fm_xfs_ls(fm);
+  fm_xfs_err_t err;
+  __uint8_t ftype;
+  ino_t ino;
+
+  CHKERR(FM_XFS_ERR_NONE);
+  // CHKERR(fm_xfs_ls(fm));
+  CHKERR(fm_xfs_find_entry(fm, &ftype, &ino, "file2.txt", 9));
+  CHKERR(fm_xfs_print_file_(fm, ino));
+  // CHKERR(fm_xfs_cd(fm, "dir1", 4));
+  // CHKERR(fm_xfs_ls(fm));
+  // CHKERR(fm_xfs_cd(fm, "..", 2));
+  // CHKERR(fm_xfs_ls(fm));
+  // CHKERR(fm_xfs_cd(fm, "dir2", 4));
+  // CHKERR(fm_xfs_ls(fm));
+  return FM_XFS_ERR_NONE;
 }

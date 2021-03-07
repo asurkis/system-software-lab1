@@ -4,11 +4,18 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
-void sample_xfs(const char *device_path) {
+fm_xfs_err_t sample_xfs(const char *device_path) {
+  fm_xfs_err_t err;
   fm_xfs_t fm;
-  fm_xfs_init(&fm, device_path);
-  fm_xfs_sample(&fm);
-  fm_xfs_free(&fm);
+  err = fm_xfs_init(&fm, device_path);
+  if (err != FM_XFS_ERR_NONE)
+    return err;
+  err = fm_xfs_sample(&fm);
+  if (err != FM_XFS_ERR_NONE)
+    return err;
+  err = fm_xfs_free(&fm);
+  if (err != FM_XFS_ERR_NONE)
+    return err;
 }
 
 int main(int argc, char **argv) {
@@ -28,6 +35,7 @@ int main(int argc, char **argv) {
     sample_xfs(args.Open.DevicePath);
     break;
   } */
-  sample_xfs("/hdd/homework/system-software/testfs");
+  printf("\n\nERRCODE = %d\n",
+         sample_xfs("/hdd/homework/system-software/testfs"));
   return 0;
 }
