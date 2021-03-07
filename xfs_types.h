@@ -118,6 +118,29 @@ typedef struct xfs_dir2_sf_entry {
   xfs_dir2_inou_t inumber;
 } xfs_dir2_sf_entry_t;
 
+typedef struct xfs_dir2_sf_entry_hdr {
+  __uint8_t namelen;
+  xfs_dir2_sf_off_t offset;
+  __uint8_t name[1];
+} xfs_dir2_sf_entry_hdr_t;
+
+enum xfs_dir3_ft {
+  XFS_DIR3_FT_UNKNOWN,
+  XFS_DIR3_FT_REG_FILE,
+  XFS_DIR3_FT_DIR,
+  XFS_DIR3_FT_CHRDEV,
+  XFS_DIR3_FT_BLKDEV,
+  XFS_DIR3_FT_FIFO,
+  XFS_DIR3_FT_SOCK,
+  XFS_DIR3_FT_SYMLINK,
+  XFS_DIR3_FT_WHT
+};
+
+typedef struct xfs_dir2_sf_entry_footer {
+  __uint8_t ftype;
+  xfs_dir2_inou_t inumber;
+} xfs_dir2_sf_entry_footer_t;
+
 typedef struct xfs_dir2_sf {
   xfs_dir2_sf_hdr_t hdr;
   xfs_dir2_sf_entry_t list[1];
@@ -185,12 +208,5 @@ static inline size_t xfs_dinode_size(xfs_dinode_core_t *di) {
   return di->di_version < 3 ? XFS_DINODE_V2_SIZE
                             : XFS_DINODE_V3_SIZE;
 }
-
-void dtoh_xfs_sb(xfs_sb_t *sb);
-void dtoh_xfs_timestamp(xfs_timestamp_t *t);
-void dtoh_xfs_dinode_core(xfs_dinode_core_t *di);
-
-void dtoh_xfs_dir2_sf_hdr(xfs_dir2_sf_hdr_t *sf);
-void dtoh_xfs_dir2_sf(xfs_dir2_sf_t *sf);
 
 #endif

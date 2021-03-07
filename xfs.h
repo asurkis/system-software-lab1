@@ -3,6 +3,8 @@
 
 #include "xfs_types.h"
 
+#define FILENAME_BUFLEN 256
+
 typedef struct fm_xfs {
   FILE *f;
   xfs_sb_t sb;
@@ -12,12 +14,14 @@ typedef struct fm_xfs {
 typedef enum fm_xfs_err {
   FM_XFS_ERR_NONE = 0,
   FM_XFS_ERR_DEVICE_NOT_FOUND,
-  FM_XFS_ERR_DEVICE
+  FM_XFS_ERR_DEVICE,
+  FM_XFS_ERR_DIRECTORY_NOT_FOUND,
+  FM_XFS_ERR_NOT_A_DIRECTORY
 } fm_xfs_err_t;
 
 fm_xfs_err_t fm_xfs_init(fm_xfs_t *fm, char const *device_path);
 fm_xfs_err_t fm_xfs_free(fm_xfs_t *fm);
 fm_xfs_err_t fm_xfs_sample(fm_xfs_t *fm);
-fm_xfs_err_t fm_xfs_cd(fm_xfs_t *fm, char const *path);
+fm_xfs_err_t fm_xfs_cd(fm_xfs_t *fm, char const *dirname, size_t dirnamelen);
 
 #endif
