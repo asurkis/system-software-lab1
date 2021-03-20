@@ -32,7 +32,8 @@ static xfs_ino_t inode_number(xfs_dir2_inou_t u, int is64) {
   }
 }
 
-static void fm_xfs_ls_local_(fm_xfs_t *fm, void *dfork) {
+static void fm_xfs_ls_local_(fm_xfs_t *fm, xfs_dinode_core_t *core,
+                             void *dfork) {
   xfs_dir2_sf_t *sf = dfork;
   xfs_ino_t parent = inode_number(sf->hdr.parent, sf->hdr.i8count);
   printf(". => %d\n", fm->ino_current_dir);
@@ -62,9 +63,52 @@ static void fm_xfs_ls_local_(fm_xfs_t *fm, void *dfork) {
   }
 }
 
-static void fm_xfs_ls_extents_(fm_xfs_t *fm, void *dfork) {}
+static void fm_xfs_ls_extents_(fm_xfs_t *fm, xfs_dinode_core_t *core,
+                               void *dfork) {
+  struct xfs_bmbt_rec *list = dfork;
+  struct xfs_bmbt_irec unwrapped;
+  void *data = alloca(be32toh(fm->sb.sb_blocksize));
+  struct xfs_dir3_data_hdr *dir3_header = data;
 
-static void fm_xfs_ls_btree_(fm_xfs_t *fm, void *dfork) {}
+  xfs_filblks_t read_blocks = 0;
+  for (xfs_extnum_t i = 0; i < be32toh(core->di_nextents); ++i) {
+    xfs_bmbt_disk_get_all(&list[i], &unwrapped);
+    fseek(fm->f, unwrapped.br_startblock * be32toh(fm->sb.sb_blocksize),
+          SEEK_SET);
+    for (int j = 0;
+         unwrapped.br_startoff <= read_blocks && j < unwrapped.br_blockcount;
+         ++j) {
+      if (fread(data, be32toh(fm->sb.sb_blocksize), 1, fm->f) != 1)
+        return FM_XFS_ERR_DEVICE;
+      ++read_blocks;
+
+      xfs_dir2_data_union_t *iter =
+          (xfs_dir2_data_union_t *)((char *)data +
+                                    sizeof(struct xfs_dir3_data_hdr));
+      while ((char *)iter + sizeof(xfs_dir2_data_union_t) <=
+                 (char *)data + be32toh(fm->sb.sb_blocksize) &&
+             iter->unused.freetag != XFS_DIR2_DATA_UNUSED_FREETAG) {
+        char buf[FILENAME_BUFLEN];
+        // for (size_t i = 0; i < sizeof(*iter); i += 2) {
+        //   printf("%02x%02x ", ((unsigned char *)iter)[i], ((unsigned char
+        //   *)iter)[i + 1]);
+        // }
+        memcpy(buf, iter->entry.name, iter->entry.namelen);
+        buf[iter->entry.namelen] = 0;
+        printf("%s => %d\n", buf, be64toh(iter->entry.inumber));
+        size_t offset = sizeof(xfs_dir2_data_entry_t) - sizeof(char) +
+                        iter->entry.namelen * sizeof(char);
+        offset +=
+            sizeof(ino_t) - ((offset + sizeof(ino_t) - 1) % sizeof(ino_t) + 1);
+        iter = (xfs_dir2_data_union_t *)((char *)iter + offset);
+      }
+    }
+  }
+  return FM_XFS_ERR_NONE;
+}
+
+static void fm_xfs_ls_btree_(fm_xfs_t *fm, xfs_dinode_core_t *core,
+                             void *dfork) {}
 
 fm_xfs_err_t fm_xfs_ls(fm_xfs_t *fm) {
   __uint16_t inodesize = be16toh(fm->sb.sb_inodesize);
@@ -76,13 +120,13 @@ fm_xfs_err_t fm_xfs_ls(fm_xfs_t *fm) {
   void *dfork = (void *)((char *)inode_info + xfs_dinode_size(di));
   switch (di->di_format) {
   case XFS_DINODE_FMT_LOCAL:
-    fm_xfs_ls_local_(fm, dfork);
+    fm_xfs_ls_local_(fm, di, dfork);
     break;
   case XFS_DINODE_FMT_EXTENTS:
-    fm_xfs_ls_extents_(fm, dfork);
+    fm_xfs_ls_extents_(fm, di, dfork);
     break;
   case XFS_DINODE_FMT_BTREE:
-    fm_xfs_ls_btree_(fm, dfork);
+    fm_xfs_ls_btree_(fm, di, dfork);
     break;
   }
   return FM_XFS_ERR_NONE;
@@ -211,19 +255,6 @@ fm_xfs_print_file_extents_(fm_xfs_t *fm, xfs_dinode_core_t *core, void *dfork) {
       s = be32toh(fm->sb.sb_blocksize);
     }
   }
-  /* void *data = alloca(fm->sb.sb_blocksize);
-  for (xfs_filblks_t i = 0; i < list->br_blockcount; ++i) {
-    if (list[i].br_state == XFS_EXT_NORM) {
-      size_t s = fm->sb.sb_blocksize - list[i].br_startoff;
-      fseek(fm->f,
-            fm->sb.sb_blocksize * list[i].br_startblock + list[i].br_startoff,
-            SEEK_SET);
-      if (fread(data, s, 1, fm->f) != 1)
-        return FM_XFS_ERR_DEVICE;
-      fwrite(data, s, 1, stdout);
-    }
-  }
-  fflush(stdout); */
   return FM_XFS_ERR_NONE;
 }
 
@@ -263,13 +294,13 @@ fm_xfs_err_t fm_xfs_sample(fm_xfs_t *fm) {
 
   CHKERR(FM_XFS_ERR_NONE);
   // CHKERR(fm_xfs_ls(fm));
-  CHKERR(fm_xfs_find_entry(fm, &ftype, &ino, "file2.txt", 9));
-  CHKERR(fm_xfs_print_file_(fm, ino));
+  // CHKERR(fm_xfs_find_entry(fm, &ftype, &ino, "file2.txt", 9));
+  // CHKERR(fm_xfs_print_file_(fm, ino));
   // CHKERR(fm_xfs_cd(fm, "dir1", 4));
   // CHKERR(fm_xfs_ls(fm));
   // CHKERR(fm_xfs_cd(fm, "..", 2));
   // CHKERR(fm_xfs_ls(fm));
-  // CHKERR(fm_xfs_cd(fm, "dir2", 4));
-  // CHKERR(fm_xfs_ls(fm));
+  CHKERR(fm_xfs_cd(fm, "dir2", 4));
+  CHKERR(fm_xfs_ls(fm));
   return FM_XFS_ERR_NONE;
 }

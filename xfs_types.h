@@ -30,9 +30,12 @@ typedef __int64_t xfs_fsize_t;
 typedef __int64_t xfs_lsn_t;
 typedef __u8 xfs_dir2_sf_off_t[2];
 typedef void *xfs_dir2_dataptr_t;
-typedef off_t xfs_dir2_data_off_t;
+// typedef off_t xfs_dir2_data_off_t;
+typedef __uint16_t xfs_dir2_data_off_t;
 
-typedef struct xfs_sb {
+#define PACKED_STRUCT struct __attribute__((packed))
+
+typedef PACKED_STRUCT xfs_sb {
   __uint32_t sb_magicnum;
   __uint32_t sb_blocksize;
   xfs_rfsblock_t sb_dblocks;
@@ -91,40 +94,42 @@ typedef struct xfs_sb {
   xfs_lsn_t sb_lsn;
   uuid_t sb_meta_uuid;
   xfs_ino_t sb_rrmapino;
-} xfs_sb_t;
+}
+xfs_sb_t;
 
-typedef struct {
-  __uint8_t i[8];
-} xfs_dir2_ino8_t;
+typedef PACKED_STRUCT { __uint8_t i[8]; }
+xfs_dir2_ino8_t;
 
-typedef struct {
-  __uint8_t i[4];
-} xfs_dir2_ino4_t;
+typedef PACKED_STRUCT { __uint8_t i[4]; }
+xfs_dir2_ino4_t;
 
 typedef union {
   xfs_dir2_ino8_t i8;
   xfs_dir2_ino4_t i4;
 } xfs_dir2_inou_t;
 
-typedef struct xfs_dir2_sf_hdr {
+typedef PACKED_STRUCT xfs_dir2_sf_hdr {
   __uint8_t count;
   __uint8_t i8count;
   xfs_dir2_inou_t parent;
-} xfs_dir2_sf_hdr_t;
+}
+xfs_dir2_sf_hdr_t;
 
-typedef struct xfs_dir2_sf_entry {
+typedef PACKED_STRUCT xfs_dir2_sf_entry {
   __uint8_t namelen;
   xfs_dir2_sf_off_t offset;
   __uint8_t name[1];
   __uint8_t ftype;
   xfs_dir2_inou_t inumber;
-} xfs_dir2_sf_entry_t;
+}
+xfs_dir2_sf_entry_t;
 
-typedef struct xfs_dir2_sf_entry_hdr {
+typedef PACKED_STRUCT xfs_dir2_sf_entry_hdr {
   __uint8_t namelen;
   xfs_dir2_sf_off_t offset;
   __uint8_t name[1];
-} xfs_dir2_sf_entry_hdr_t;
+}
+xfs_dir2_sf_entry_hdr_t;
 
 enum xfs_dir3_ft {
   XFS_DIR3_FT_UNKNOWN,
@@ -138,58 +143,68 @@ enum xfs_dir3_ft {
   XFS_DIR3_FT_WHT
 };
 
-typedef struct xfs_dir2_sf_entry_footer {
+typedef PACKED_STRUCT xfs_dir2_sf_entry_footer {
   __uint8_t ftype;
   xfs_dir2_inou_t inumber;
-} xfs_dir2_sf_entry_footer_t;
+}
+xfs_dir2_sf_entry_footer_t;
 
-typedef struct xfs_dir2_sf {
+typedef PACKED_STRUCT xfs_dir2_sf {
   xfs_dir2_sf_hdr_t hdr;
   xfs_dir2_sf_entry_t list[1];
-} xfs_dir2_sf_t;
+}
+xfs_dir2_sf_t;
 
 #define XFS_DIR2_DATA_FD_COUNT 3
 
-typedef struct xfs_dir2_data_entry {
+typedef PACKED_STRUCT xfs_dir2_data_entry {
   xfs_ino_t inumber;
   __uint8_t namelen;
   __uint8_t name[1];
   __uint8_t ftype;
   xfs_dir2_data_off_t tag;
-} xfs_dir2_data_entry_t;
+}
+xfs_dir2_data_entry_t;
 
-typedef struct xfs_dir2_data_unused {
+#define XFS_DIR2_DATA_UNUSED_FREETAG 0xFFFF
+
+typedef PACKED_STRUCT xfs_dir2_data_unused {
   __uint16_t freetag; /*0xffff*/
   xfs_dir2_data_off_t length;
   xfs_dir2_data_off_t tag;
-} xfs_dir2_data_unused_t;
+}
+xfs_dir2_data_unused_t;
 
 typedef union {
   xfs_dir2_data_entry_t entry;
   xfs_dir2_data_unused_t unused;
 } xfs_dir2_data_union_t;
 
-typedef struct xfs_dir2_data_free {
+typedef PACKED_STRUCT xfs_dir2_data_free {
   xfs_dir2_data_off_t offset;
   xfs_dir2_data_off_t length;
-} xfs_dir2_data_free_t;
+}
+xfs_dir2_data_free_t;
 
-typedef struct xfs_dir2_leaf_entry {
+typedef PACKED_STRUCT xfs_dir2_leaf_entry {
   xfs_dahash_t hashval;
   xfs_dir2_dataptr_t address;
-} xfs_dir2_leaf_entry_t;
+}
+xfs_dir2_leaf_entry_t;
 
-typedef struct xfs_dir2_block_tail {
+typedef PACKED_STRUCT xfs_dir2_block_tail {
   __uint32_t count;
   __uint32_t stale;
-} xfs_dir2_block_tail_t;
+}
+xfs_dir2_block_tail_t;
 
-typedef struct xfs_dir2_data_hdr {
+typedef PACKED_STRUCT xfs_dir2_data_hdr {
   __uint32_t magic;
   xfs_dir2_data_free_t bestfree[XFS_DIR2_DATA_FD_COUNT];
-} xfs_dir2_data_hdr_t;
+}
+xfs_dir2_data_hdr_t;
 
-struct xfs_dir3_blk_hdr {
+PACKED_STRUCT xfs_dir3_blk_hdr {
   __be32 magic;
   __be32 crc;
   __be64 blkno;
@@ -198,23 +213,25 @@ struct xfs_dir3_blk_hdr {
   __be64 owner;
 };
 
-struct xfs_dir3_data_hdr {
-  struct xfs_dir3_blk_hdr hdr;
+PACKED_STRUCT xfs_dir3_data_hdr {
+  PACKED_STRUCT xfs_dir3_blk_hdr hdr;
   xfs_dir2_data_free_t best_free[XFS_DIR2_DATA_FD_COUNT];
   __be32 pad;
 };
 
-typedef struct xfs_dir2_block {
+typedef PACKED_STRUCT xfs_dir2_block {
   xfs_dir2_data_hdr_t hdr;
   xfs_dir2_data_union_t u[1];
   xfs_dir2_leaf_entry_t leaf[1];
   xfs_dir2_block_tail_t tail;
-} xfs_dir2_block_t;
+}
+xfs_dir2_block_t;
 
-typedef struct xfs_timestamp {
+typedef PACKED_STRUCT xfs_timestamp {
   __int32_t t_sec;
   __int32_t t_nsec;
-} xfs_timestamp_t;
+}
+xfs_timestamp_t;
 
 typedef enum xfs_dinode_fmt {
   XFS_DINODE_FMT_DEV,
@@ -225,7 +242,7 @@ typedef enum xfs_dinode_fmt {
   XFS_DINODE_FMT_RMAP,
 } xfs_dinode_fmt_t;
 
-typedef struct xfs_dinode_core {
+typedef PACKED_STRUCT xfs_dinode_core {
   __uint16_t di_magic;
   __uint16_t di_mode;
   __int8_t di_version;
@@ -264,7 +281,8 @@ typedef struct xfs_dinode_core {
   xfs_timestamp_t di_crtime;
   __be64 di_ino;
   uuid_t di_uuid;
-} xfs_dinode_core_t;
+}
+xfs_dinode_core_t;
 
 /* 15.3 Data Fork -- начало параграфа */
 #define XFS_DINODE_V2_SIZE 100
@@ -276,11 +294,9 @@ static inline size_t xfs_dinode_size(xfs_dinode_core_t *di) {
 
 typedef enum { XFS_EXT_NORM, XFS_EXT_UNWRITTEN, XFS_EXT_INVALID } xfs_exntst_t;
 
-struct xfs_bmbt_rec {
-  __uint64_t l0, l1;
-};
+PACKED_STRUCT xfs_bmbt_rec { __uint64_t l0, l1; };
 
-struct xfs_bmbt_irec {
+PACKED_STRUCT xfs_bmbt_irec {
   xfs_fileoff_t br_startoff;
   xfs_fsblock_t br_startblock;
   xfs_filblks_t br_blockcount;
@@ -288,8 +304,8 @@ struct xfs_bmbt_irec {
 };
 
 // https://elixir.bootlin.com/linux/v5.11.4/source/fs/xfs/libxfs/xfs_bmap_btree.c#L60
-static inline void xfs_bmbt_disk_get_all(struct xfs_bmbt_rec *rec,
-                                         struct xfs_bmbt_irec *irec) {
+static inline void xfs_bmbt_disk_get_all(PACKED_STRUCT xfs_bmbt_rec *rec,
+                                         PACKED_STRUCT xfs_bmbt_irec *irec) {
   __uint64_t l0 = be64toh(rec->l0);
   __uint64_t l1 = be64toh(rec->l1);
   irec->br_startoff = (l0 & ((1 << 63) - 1)) >> 9;
