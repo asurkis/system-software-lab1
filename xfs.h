@@ -14,6 +14,7 @@ typedef struct fm_xfs {
 
 typedef enum fm_xfs_err {
   FM_XFS_ERR_NONE = 0,
+  FM_XFS_ERR_NOT_SUPPORTED,
   FM_XFS_ERR_DEVICE_NOT_FOUND,
   FM_XFS_ERR_DEVICE,
   FM_XFS_ERR_FILENAME_NOT_FOUND,
