@@ -5,7 +5,7 @@
 
 #define TELL_ERR_(type)                                                        \
   case type:                                                                   \
-    fputs(#type, stderr);                                                      \
+    fputs(#type "\n", stderr);                                                 \
     break;
 
 static void tell_err_(fm_xfs_err_t code) {

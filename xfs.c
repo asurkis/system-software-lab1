@@ -142,7 +142,8 @@ typedef struct fm_xfs_dir_iter_block_self {
 static int fm_xfs_dir_iter_block_(void *self_, void *data) {
   fm_xfs_dir_iter_block_self_t *self = self_;
   struct xfs_dir3_data_hdr *dir3_header = data;
-  if (be32toh(dir3_header->hdr.magic) != XFS_DIR3_DATA_MAGIC) {
+  if (be32toh(dir3_header->hdr.magic) != XFS_DIR3_BLOCK_MAGIC &&
+      be32toh(dir3_header->hdr.magic) != XFS_DIR3_DATA_MAGIC) {
     self->err = FM_XFS_ERR_MAGIC;
     return 0;
   }
@@ -340,25 +341,43 @@ static int is_self_or_parent_(char const *name) {
 
 static fm_xfs_err_t fm_xfs_cp_entry_(fm_xfs_t *fm, fm_xfs_dir_entry_t *what);
 
+typedef struct fm_xfs_cp_dir_entry_callback_self {
+  fm_xfs_t *fm;
+  fm_xfs_err_t err;
+} fm_xfs_cp_dir_entry_callback_self_t;
+
 static int fm_xfs_cp_dir_entry_callback_(void *self_, void *data) {
-  fm_xfs_t *fm = self_;
+  fm_xfs_cp_dir_entry_callback_self_t *self = self_;
   fm_xfs_dir_entry_t *entry = data;
   if (is_self_or_parent_(entry->name))
     return 1;
-  fm_xfs_cp_entry_(fm, entry);
-  return 1;
+  self->err = fm_xfs_cp_entry_(self->fm, entry);
+  return self->err == FM_XFS_ERR_NONE;
 }
 
 static fm_xfs_err_t fm_xfs_cp_dir_(fm_xfs_t *fm, fm_xfs_dir_entry_t *what) {
+  char *old_path = getcwd(NULL, 0);
   if (!is_self_or_parent_(what->name)) {
-    if (mkdir(what->name, 0777) || chdir(what->name))
+    if (mkdir(what->name, 0777) || chdir(what->name)) {
+      free(old_path);
       return FM_XFS_ERR_OUT_DEVICE;
+    }
   }
   xfs_ino_t old = fm->ino_current_dir;
   fm->ino_current_dir = what->inumber;
-  fm_xfs_dir_iter_(fm, fm, fm_xfs_cp_dir_entry_callback_);
+
+  fm_xfs_cp_dir_entry_callback_self_t self;
+  self.fm = fm;
+  self.err = FM_XFS_ERR_NONE;
+  fm_xfs_dir_iter_(fm, &self, fm_xfs_cp_dir_entry_callback_);
+
   fm->ino_current_dir = old;
-  return FM_XFS_ERR_NONE;
+  if (!chdir(old_path)) {
+    free(old_path);
+    return FM_XFS_ERR_OUT_DEVICE;
+  }
+  free(old_path);
+  return self.err;
 }
 
 static fm_xfs_err_t fm_xfs_cp_entry_(fm_xfs_t *fm, fm_xfs_dir_entry_t *what) {

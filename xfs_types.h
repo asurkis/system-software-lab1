@@ -184,21 +184,6 @@ typedef struct PACKED xfs_dir2_data_free {
   xfs_dir2_data_off_t length;
 } xfs_dir2_data_free_t;
 
-typedef struct PACKED xfs_dir2_leaf_entry {
-  xfs_dahash_t hashval;
-  xfs_dir2_dataptr_t address;
-} xfs_dir2_leaf_entry_t;
-
-typedef struct PACKED xfs_dir2_block_tail {
-  __uint32_t count;
-  __uint32_t stale;
-} xfs_dir2_block_tail_t;
-
-typedef struct PACKED xfs_dir2_data_hdr {
-  __uint32_t magic;
-  xfs_dir2_data_free_t bestfree[XFS_DIR2_DATA_FD_COUNT];
-} xfs_dir2_data_hdr_t;
-
 struct PACKED xfs_dir3_blk_hdr {
   __be32 magic;
   __be32 crc;
@@ -215,13 +200,6 @@ struct PACKED xfs_dir3_data_hdr {
   /* Добавил для упрощения синтаксиса */
   xfs_dir2_data_union_t entries[1];
 };
-
-typedef struct PACKED xfs_dir2_block {
-  xfs_dir2_data_hdr_t hdr;
-  xfs_dir2_data_union_t u[1];
-  xfs_dir2_leaf_entry_t leaf[1];
-  xfs_dir2_block_tail_t tail;
-} xfs_dir2_block_t;
 
 typedef struct PACKED xfs_timestamp {
   __int32_t t_sec;
