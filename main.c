@@ -1,21 +1,15 @@
 #include "argparse.h"
 #include "devicelist.h"
+#include "ui.h"
 #include "xfs.h"
 #include <stdio.h>
 #include <sys/stat.h>
 
 fm_xfs_err_t sample_xfs(const char *device_path) {
-  fm_xfs_err_t err;
   fm_xfs_t fm;
-  err = fm_xfs_init(&fm, device_path);
-  if (err != FM_XFS_ERR_NONE)
-    return err;
-  err = fm_xfs_sample(&fm);
-  if (err != FM_XFS_ERR_NONE)
-    return err;
-  err = fm_xfs_free(&fm);
-  if (err != FM_XFS_ERR_NONE)
-    return err;
+  FM_XFS_CHKTHROW(fm_xfs_init(&fm, device_path));
+  FM_XFS_CHKTHROW(fm_xfs_sample(&fm));
+  FM_XFS_CHKTHROW(fm_xfs_free(&fm));
 }
 
 int main(int argc, char **argv) {
@@ -35,7 +29,14 @@ int main(int argc, char **argv) {
     sample_xfs(args.Open.DevicePath);
     break;
   } */
-  printf("\n\nERRCODE = %d\n",
-         sample_xfs("/hdd/homework/system-software/testfs"));
+  // printf("\n\nERRCODE = %d\n",
+  //        sample_xfs("/hdd/homework/system-software/testfs"));
+  fm_xfs_t fm;
+  FM_XFS_CHKTHROW(fm_xfs_init(&fm, "/hdd/homework/system-software/testfs"));
+  int nxt_cmd_code;
+  do {
+    nxt_cmd_code = next_command(&fm);
+  } while (nxt_cmd_code);
+  FM_XFS_CHKTHROW(fm_xfs_free(&fm));
   return 0;
 }

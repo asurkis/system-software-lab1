@@ -35,6 +35,8 @@ typedef __uint16_t xfs_dir2_data_off_t;
 
 #define PACKED_STRUCT struct __attribute__((packed))
 
+#define XFS_SB_MAGICNUM 0x58465342
+
 typedef PACKED_STRUCT xfs_sb {
   __uint32_t sb_magicnum;
   __uint32_t sb_blocksize;
