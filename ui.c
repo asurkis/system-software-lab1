@@ -83,13 +83,8 @@ static int cmd_cp_(fm_xfs_t *fm) {
   return 0;
 }
 
-static int cmd_pwd_(fm_xfs_t *fm) {
-  printf("Inode %d\n", fm->ino_current_dir);
-  return 1;
-}
-
 int next_command(fm_xfs_t *fm) {
-  printf(">");
+  printf("%d>", fm->ino_current_dir);
   char *cmd;
   scanf("%ms", &cmd);
 
@@ -100,8 +95,6 @@ int next_command(fm_xfs_t *fm) {
     retcode = cmd_cd_(fm);
   else if (strcmp("cp", cmd) == 0)
     retcode = cmd_cp_(fm);
-  else if (strcmp("pwd", cmd) == 0)
-    retcode = cmd_pwd_(fm);
   else if (strcmp("exit", cmd) == 0)
     retcode = 0;
   else

@@ -6,5 +6,6 @@ add_executable(lab1
     argparse.c argparse.h
     devicelist.c devicelist.h
     ui.c ui.h
+    utils.h
     xfs.c xfs.h
-    xfs_types.c xfs_types.h)
+    xfs_types.h)
