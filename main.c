@@ -5,13 +5,6 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
-fm_xfs_err_t sample_xfs(const char *device_path) {
-  fm_xfs_t fm;
-  FM_XFS_CHKTHROW(fm_xfs_init(&fm, device_path));
-  FM_XFS_CHKTHROW(fm_xfs_sample(&fm));
-  FM_XFS_CHKTHROW(fm_xfs_free(&fm));
-}
-
 int main(int argc, char **argv) {
   /* struct command_line_args args;
   argparse(&args, argc, argv);

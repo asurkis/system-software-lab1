@@ -4,8 +4,10 @@
 #include <endian.h>
 #include <features.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 fm_xfs_err_t fm_xfs_init(fm_xfs_t *fm, char const *device_path) {
   fm->f = fopen(device_path, "r");
@@ -35,9 +37,40 @@ static xfs_ino_t inode_number_(xfs_dir2_inou_t u, int is64) {
   }
 }
 
-typedef fm_xfs_err_t (*dir_iterfun_t)(fm_xfs_t *fm, xfs_dinode_core_t *core,
-                                      void *dfork, void *self,
-                                      callback_t callback);
+static fm_xfs_err_t fm_xfs_iter_extents_(fm_xfs_t *fm, xfs_dinode_core_t *core,
+                                         void *dfork, void *self,
+                                         callback_t callback) {
+  struct xfs_bmbt_rec *list = dfork;
+  struct xfs_bmbt_irec unwrapped;
+  void *data = alloca(be32toh(fm->sb.sb_blocksize));
+
+  int is_running = 1;
+  xfs_filblks_t read_blocks = 0;
+  for (xfs_extnum_t i = 0; is_running && i < be32toh(core->di_nextents); ++i) {
+    xfs_bmbt_disk_get_all(&list[i], &unwrapped);
+    fseek(fm->f, unwrapped.br_startblock * be32toh(fm->sb.sb_blocksize),
+          SEEK_SET);
+    for (int j = 0; is_running && unwrapped.br_startoff <= read_blocks &&
+                    j < unwrapped.br_blockcount;
+         ++j) {
+      if (fread(data, be32toh(fm->sb.sb_blocksize), 1, fm->f) != 1)
+        return FM_XFS_ERR_DEVICE;
+      ++read_blocks;
+      if (!(*callback)(self, data))
+        return FM_XFS_ERR_NONE;
+    }
+  }
+  return FM_XFS_ERR_NONE;
+}
+
+static fm_xfs_err_t fm_xfs_iter_btree_(fm_xfs_t *fm, xfs_dinode_core_t *core,
+                                       void *dfork, void *self,
+                                       callback_t callback) {
+  return FM_XFS_ERR_NOT_SUPPORTED;
+}
+
+typedef fm_xfs_err_t (*iterfun_t)(fm_xfs_t *fm, xfs_dinode_core_t *core,
+                                  void *dfork, void *self, callback_t callback);
 
 typedef struct fm_xfs_dir_entry {
   ino_t inumber;
@@ -99,18 +132,25 @@ static fm_xfs_err_t fm_xfs_dir_iter_local_(fm_xfs_t *fm,
   return FM_XFS_ERR_NONE;
 }
 
-static fm_xfs_err_t fm_xfs_dir_iter_block_(fm_xfs_t *fm, int *is_running,
-                                           void *data, void *self,
-                                           callback_t callback) {
+typedef struct fm_xfs_dir_iter_block_self {
+  fm_xfs_t *fm;
+  void *entry_self;
+  callback_t entry_callback;
+  fm_xfs_err_t err;
+} fm_xfs_dir_iter_block_self_t;
+
+static int fm_xfs_dir_iter_block_(void *self_, void *data) {
+  fm_xfs_dir_iter_block_self_t *self = self_;
   struct xfs_dir3_data_hdr *dir3_header = data;
-  if (be32toh(dir3_header->hdr.magic) != XFS_DIR3_DATA_MAGIC)
-    return FM_XFS_ERR_MAGIC;
+  if (be32toh(dir3_header->hdr.magic) != XFS_DIR3_DATA_MAGIC) {
+    self->err = FM_XFS_ERR_MAGIC;
+    return 0;
+  }
 
   fm_xfs_dir_entry_t entry;
-
   xfs_dir2_data_union_t *iter = dir3_header->entries;
   while ((char *)iter + sizeof(xfs_dir2_data_union_t) <=
-             (char *)data + be32toh(fm->sb.sb_blocksize) &&
+             (char *)data + be32toh(self->fm->sb.sb_blocksize) &&
          iter->unused.freetag != XFS_DIR2_DATA_UNUSED_FREETAG) {
     entry.namelen = iter->entry.namelen;
     memcpy(entry.name, iter->entry.name, entry.namelen);
@@ -118,9 +158,9 @@ static fm_xfs_err_t fm_xfs_dir_iter_block_(fm_xfs_t *fm, int *is_running,
     entry.inumber = be64toh(iter->entry.inumber);
     entry.ftype = iter->entry.name[entry.namelen];
 
-    if (!(*callback)(self, &entry)) {
-      *is_running = 0;
-      return FM_XFS_ERR_NONE;
+    if (!(*self->entry_callback)(self->entry_self, &entry)) {
+      self->err = FM_XFS_ERR_NONE;
+      return 0;
     }
 
     size_t offset = sizeof(xfs_dir2_data_entry_t) - sizeof(char) +
@@ -129,40 +169,36 @@ static fm_xfs_err_t fm_xfs_dir_iter_block_(fm_xfs_t *fm, int *is_running,
         sizeof(ino_t) - ((offset + sizeof(ino_t) - 1) % sizeof(ino_t) + 1);
     iter = (xfs_dir2_data_union_t *)((char *)iter + offset);
   }
-  return FM_XFS_ERR_NONE;
+  return 1;
 }
 
 static fm_xfs_err_t fm_xfs_dir_iter_extents_(fm_xfs_t *fm,
                                              xfs_dinode_core_t *core,
                                              void *dfork, void *self,
                                              callback_t callback) {
-  struct xfs_bmbt_rec *list = dfork;
-  struct xfs_bmbt_irec unwrapped;
-  void *data = alloca(be32toh(fm->sb.sb_blocksize));
+  fm_xfs_dir_iter_block_self_t block_self;
+  block_self.fm = fm;
+  block_self.entry_self = self;
+  block_self.entry_callback = callback;
+  block_self.err = FM_XFS_ERR_NONE;
 
-  int is_running = 1;
-  xfs_filblks_t read_blocks = 0;
-  for (xfs_extnum_t i = 0; is_running && i < be32toh(core->di_nextents); ++i) {
-    xfs_bmbt_disk_get_all(&list[i], &unwrapped);
-    fseek(fm->f, unwrapped.br_startblock * be32toh(fm->sb.sb_blocksize),
-          SEEK_SET);
-    for (int j = 0; is_running && unwrapped.br_startoff <= read_blocks &&
-                    j < unwrapped.br_blockcount;
-         ++j) {
-      if (fread(data, be32toh(fm->sb.sb_blocksize), 1, fm->f) != 1)
-        return FM_XFS_ERR_DEVICE;
-      ++read_blocks;
-      FM_XFS_CHKTHROW(
-          fm_xfs_dir_iter_block_(fm, &is_running, data, self, callback));
-    }
-  }
-  return FM_XFS_ERR_NONE;
+  FM_XFS_CHKTHROW(fm_xfs_iter_extents_(fm, core, dfork, &block_self,
+                                       fm_xfs_dir_iter_block_));
+  return block_self.err;
 }
 
 static fm_xfs_err_t fm_xfs_dir_iter_btree_(fm_xfs_t *fm,
                                            xfs_dinode_core_t *core, void *dfork,
                                            void *self, callback_t callback) {
-  return FM_XFS_ERR_NOT_SUPPORTED;
+  fm_xfs_dir_iter_block_self_t block_self;
+  block_self.fm = fm;
+  block_self.entry_self = self;
+  block_self.entry_callback = callback;
+  block_self.err = FM_XFS_ERR_NONE;
+
+  FM_XFS_CHKTHROW(
+      fm_xfs_iter_btree_(fm, core, dfork, &block_self, fm_xfs_dir_iter_block_));
+  return block_self.err;
 }
 
 fm_xfs_err_t fm_xfs_dir_iter_(fm_xfs_t *fm, void *self, callback_t callback) {
@@ -176,7 +212,7 @@ fm_xfs_err_t fm_xfs_dir_iter_(fm_xfs_t *fm, void *self, callback_t callback) {
     return FM_XFS_ERR_MAGIC;
   void *dfork = (void *)((char *)inode_info + xfs_dinode_size(di));
 
-  dir_iterfun_t iterfun = NULL;
+  iterfun_t iterfun = NULL;
   switch (di->di_format) {
   case XFS_DINODE_FMT_LOCAL:
     iterfun = fm_xfs_dir_iter_local_;
@@ -222,7 +258,7 @@ static int fm_xfs_dir_entry_find_callback_(void *self_, void *data) {
   return 1;
 }
 
-fm_xfs_err_t fm_xfs_find_entry(fm_xfs_t *fm, fm_xfs_dir_entry_t *expected) {
+fm_xfs_err_t fm_xfs_find_entry_(fm_xfs_t *fm, fm_xfs_dir_entry_t *expected) {
   fm_xfs_dir_entry_find_callback_self_t self;
   self.expected = expected;
   self.err = FM_XFS_ERR_NONE;
@@ -238,85 +274,126 @@ fm_xfs_err_t fm_xfs_cd(fm_xfs_t *fm, char const *dirname, size_t dirnamelen) {
   fm_xfs_dir_entry_t dir;
   memcpy(dir.name, dirname, dirnamelen);
   dir.namelen = dirnamelen;
-  FM_XFS_CHKTHROW(fm_xfs_find_entry(fm, &dir));
+  FM_XFS_CHKTHROW(fm_xfs_find_entry_(fm, &dir));
   if (dir.ftype != XFS_DIR3_FT_DIR)
     return FM_XFS_ERR_NOT_A_DIRECTORY;
   fm->ino_current_dir = dir.inumber;
   return FM_XFS_ERR_NONE;
 }
 
-static fm_xfs_err_t
-fm_xfs_print_file_extents_(fm_xfs_t *fm, xfs_dinode_core_t *core, void *dfork) {
-  struct xfs_bmbt_rec *list = dfork;
-  struct xfs_bmbt_irec unwrapped;
-  void *data = alloca(be32toh(fm->sb.sb_blocksize));
-  printf("File size: %d\n", be64toh(core->di_size));
-  for (xfs_extnum_t i = 0; i < be32toh(core->di_nextents); ++i) {
-    xfs_bmbt_disk_get_all(&list[i], &unwrapped);
-    printf("%d %d %d %d\n", unwrapped.br_startoff, unwrapped.br_startblock,
-           unwrapped.br_blockcount, unwrapped.br_state);
-    size_t s = be32toh(fm->sb.sb_blocksize) - unwrapped.br_startoff;
-    printf("Byte offset: %d\n",
-           unwrapped.br_startblock * be32toh(fm->sb.sb_blocksize) +
-               unwrapped.br_startoff);
-    fseek(fm->f,
-          unwrapped.br_startblock * be32toh(fm->sb.sb_blocksize) +
-              unwrapped.br_startoff,
-          SEEK_SET);
-    for (int j = 0; j < unwrapped.br_blockcount; ++j) {
-      printf("Reading %d bytes\n", s);
-      if (fread(data, s, 1, fm->f) != 1)
-        return FM_XFS_ERR_DEVICE;
-      fwrite(data, s, 1, stderr);
-      fflush(stderr);
-      s = be32toh(fm->sb.sb_blocksize);
-    }
+typedef struct fm_xfs_cp_file_block_self {
+  __uint32_t blocksize;
+  FILE *stream;
+  fm_xfs_err_t err;
+} fm_xfs_cp_file_block_self_t;
+
+static int fm_xfs_cp_file_block_(void *self_, void *data) {
+  fm_xfs_cp_file_block_self_t *self = self_;
+  if (fwrite(data, self->blocksize, 1, self->stream) != 1) {
+    self->err = FM_XFS_ERR_OUT_DEVICE;
+    return 0;
   }
-  return FM_XFS_ERR_NONE;
+  self->err = FM_XFS_ERR_NONE;
+  return 1;
 }
 
-static fm_xfs_err_t
-fm_xfs_print_file_btree_(fm_xfs_t *fm, xfs_dinode_core_t *core, void *dfork) {
-  return FM_XFS_ERR_NONE;
-}
-
-static fm_xfs_err_t fm_xfs_print_file_(fm_xfs_t *fm, ino_t file) {
+static fm_xfs_err_t fm_xfs_cp_file_(fm_xfs_t *fm, fm_xfs_dir_entry_t *what) {
   __uint16_t inodesize = be16toh(fm->sb.sb_inodesize);
   void *inode_info = alloca(inodesize);
-  fseek(fm->f, inodesize * file, SEEK_SET);
+  fseek(fm->f, inodesize * what->inumber, SEEK_SET);
   if (fread(inode_info, inodesize, 1, fm->f) != 1)
     return FM_XFS_ERR_DEVICE;
   xfs_dinode_core_t *di = inode_info;
+  if (be16toh(di->di_magic) != XFS_DINODE_MAGIC)
+    return FM_XFS_ERR_MAGIC;
   void *dfork = (void *)((char *)inode_info + xfs_dinode_size(di));
+
+  iterfun_t iterfun = NULL;
   switch (di->di_format) {
   case XFS_DINODE_FMT_EXTENTS:
-    return fm_xfs_print_file_extents_(fm, di, dfork);
+    iterfun = fm_xfs_iter_extents_;
+    break;
   case XFS_DINODE_FMT_BTREE:
-    return fm_xfs_print_file_btree_(fm, di, dfork);
+    iterfun = fm_xfs_iter_btree_;
+    break;
   }
+
+  if (!iterfun)
+    return FM_XFS_ERR_FORMAT;
+
+  FILE *f = fopen(what->name, "wb");
+  if (!f)
+    return FM_XFS_ERR_OUT_DEVICE;
+  fm_xfs_cp_file_block_self_t self;
+  self.blocksize = be32toh(fm->sb.sb_blocksize);
+  self.stream = f;
+  self.err = FM_XFS_ERR_NONE;
+  fm_xfs_err_t iter_err = iterfun(fm, di, dfork, &self, fm_xfs_cp_file_block_);
+  fclose(f);
+  FM_XFS_CHKTHROW(iter_err);
+  return self.err;
 }
 
-fm_xfs_err_t fm_xfs_cp(fm_xfs_t *fm, char const *from, char const *to) {}
+static int is_self_or_parent_(char const *name) {
+  return strcmp(".", name) == 0 || strcmp("..", name) == 0;
+}
 
-#define CHKERR(expr)                                                           \
-  do {                                                                         \
-    FM_XFS_CHKTHROW(expr);                                                     \
-    printf("==== %s: %d ====\n", __FILE__, __LINE__);                          \
-  } while (0);
+static fm_xfs_err_t fm_xfs_cp_entry_(fm_xfs_t *fm, fm_xfs_dir_entry_t *what);
 
-fm_xfs_err_t fm_xfs_sample(fm_xfs_t *fm) {
-  __uint8_t ftype;
-  ino_t ino;
+static int fm_xfs_cp_dir_entry_callback_(void *self_, void *data) {
+  fm_xfs_t *fm = self_;
+  fm_xfs_dir_entry_t *entry = data;
+  if (is_self_or_parent_(entry->name))
+    return 1;
+  fm_xfs_cp_entry_(fm, entry);
+  return 1;
+}
 
-  CHKERR(FM_XFS_ERR_NONE);
-  // CHKERR(fm_xfs_ls(fm));
-  // CHKERR(fm_xfs_find_entry(fm, &ftype, &ino, "file2.txt", 9));
-  // CHKERR(fm_xfs_print_file_(fm, ino));
-  // CHKERR(fm_xfs_cd(fm, "dir1", 4));
-  // CHKERR(fm_xfs_ls(fm));
-  // CHKERR(fm_xfs_cd(fm, "..", 2));
-  // CHKERR(fm_xfs_ls(fm));
-  CHKERR(fm_xfs_cd(fm, "dir2", 4));
-  CHKERR(fm_xfs_ls(fm));
+static fm_xfs_err_t fm_xfs_cp_dir_(fm_xfs_t *fm, fm_xfs_dir_entry_t *what) {
+  if (!is_self_or_parent_(what->name)) {
+    if (mkdir(what->name, 0777) || chdir(what->name))
+      return FM_XFS_ERR_OUT_DEVICE;
+  }
+  xfs_ino_t old = fm->ino_current_dir;
+  fm->ino_current_dir = what->inumber;
+  fm_xfs_dir_iter_(fm, fm, fm_xfs_cp_dir_entry_callback_);
+  fm->ino_current_dir = old;
+  return FM_XFS_ERR_NONE;
+}
+
+static fm_xfs_err_t fm_xfs_cp_entry_(fm_xfs_t *fm, fm_xfs_dir_entry_t *what) {
+  switch (what->ftype) {
+  case XFS_DIR3_FT_REG_FILE:
+    fm_xfs_cp_file_(fm, what);
+    break;
+  case XFS_DIR3_FT_DIR:
+    fm_xfs_cp_dir_(fm, what);
+    break;
+  default:
+    return FM_XFS_ERR_NOT_SUPPORTED;
+  }
+  return FM_XFS_ERR_NONE;
+}
+
+fm_xfs_err_t fm_xfs_cp(fm_xfs_t *fm, char const *from, char const *to) {
+  char *old_path = getcwd(NULL, 0);
+  if (!is_self_or_parent_(to)) {
+    if (mkdir(to, 0777) || chdir(to)) {
+      free(old_path);
+      return FM_XFS_ERR_OUT_DEVICE;
+    }
+  }
+
+  fm_xfs_dir_entry_t entry;
+  entry.namelen = strlen(from);
+  strcpy(entry.name, from);
+  fm_xfs_find_entry_(fm, &entry);
+  fm_xfs_cp_entry_(fm, &entry);
+
+  if (chdir(old_path)) {
+    free(old_path);
+    return FM_XFS_ERR_OUT_DEVICE;
+  }
+  free(old_path);
   return FM_XFS_ERR_NONE;
 }

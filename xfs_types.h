@@ -305,9 +305,9 @@ static inline void xfs_bmbt_disk_get_all(struct PACKED xfs_bmbt_rec *rec,
                                          struct PACKED xfs_bmbt_irec *irec) {
   __uint64_t l0 = be64toh(rec->l0);
   __uint64_t l1 = be64toh(rec->l1);
-  irec->br_startoff = (l0 & ((1 << 63) - 1)) >> 9;
-  irec->br_startblock = (l0 & ((1 << 9) - 1)) << 43 | (l1 >> 21);
-  irec->br_blockcount = l1 & ((1 << 21) - 1);
+  irec->br_startoff = (l0 & ((1ull << 63) - 1)) >> 9;
+  irec->br_startblock = (l0 & ((1ull << 9) - 1)) << 43 | (l1 >> 21);
+  irec->br_blockcount = l1 & ((1ull << 21) - 1);
   if (l0 >> 63)
     irec->br_state = XFS_EXT_UNWRITTEN;
   else
