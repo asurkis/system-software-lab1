@@ -35,7 +35,10 @@ typedef __uint16_t xfs_dir2_data_off_t;
 
 #define PACKED_STRUCT struct __attribute__((packed))
 
-#define XFS_SB_MAGICNUM 0x58465342
+#define XFS_SB_MAGIC 0x58465342
+#define XFS_DINODE_MAGIC 0x494e
+#define XFS_DIR3_BLOCK_MAGIC 0x58444233
+#define XFS_DIR3_DATA_MAGIC 0x58444433
 
 typedef PACKED_STRUCT xfs_sb {
   __uint32_t sb_magicnum;
@@ -305,7 +308,8 @@ PACKED_STRUCT xfs_bmbt_irec {
   xfs_exntst_t br_state;
 };
 
-// https://elixir.bootlin.com/linux/v5.11.4/source/fs/xfs/libxfs/xfs_bmap_btree.c#L60
+/* https://elixir.bootlin.com/linux/v5.11.4/source/fs/xfs/libxfs/xfs_bmap_btree.c#L60
+ */
 static inline void xfs_bmbt_disk_get_all(PACKED_STRUCT xfs_bmbt_rec *rec,
                                          PACKED_STRUCT xfs_bmbt_irec *irec) {
   __uint64_t l0 = be64toh(rec->l0);

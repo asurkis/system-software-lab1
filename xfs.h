@@ -34,5 +34,6 @@ fm_xfs_err_t fm_xfs_free(fm_xfs_t *fm);
 fm_xfs_err_t fm_xfs_sample(fm_xfs_t *fm);
 fm_xfs_err_t fm_xfs_ls(fm_xfs_t *fm);
 fm_xfs_err_t fm_xfs_cd(fm_xfs_t *fm, char const *dirname, size_t dirnamelen);
+fm_xfs_err_t fm_xfs_cp(fm_xfs_t *fm, char const *from, char const *to);
 
 #endif
