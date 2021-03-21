@@ -2,44 +2,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void print_devices(int HeaderInterval) {
+void print_devices(int header_interval) {
   FILE *f = fopen("/proc/mounts", "r");
-  if (!f) {
+  if (!f)
     return;
-  }
 
   int line = 0;
-  int successfulAssigns;
+  int successful_assigns;
   do {
     char *device, *mountpoint, *filesystem, *mode;
-    successfulAssigns = fscanf(f, "%ms%ms%ms%ms%*[^\n]", &device, &mountpoint,
-                               &filesystem, &mode);
+    successful_assigns = fscanf(f, "%ms%ms%ms%ms%*[^\n]", &device, &mountpoint,
+                                &filesystem, &mode);
 
-    if (successfulAssigns == 4) {
-      if (HeaderInterval >= 0) {
+    if (successful_assigns == 4) {
+      if (header_interval >= 0) {
         if (line == 0) {
           puts("\nDevice\tMount point\tFilesystem\tMode");
         }
-        if (++line == HeaderInterval) {
+        if (++line == header_interval) {
           line = 0;
         }
       }
       printf("%s\t%s\t%s\t%s\n", device, mountpoint, filesystem, mode);
     }
 
-    if (successfulAssigns >= 1) {
-      free(device);
-    }
-    if (successfulAssigns >= 2) {
-      free(mountpoint);
-    }
-    if (successfulAssigns >= 3) {
-      free(filesystem);
-    }
-    if (successfulAssigns >= 4) {
+    switch (successful_assigns) {
+    case 4:
       free(mode);
+    case 3:
+      free(filesystem);
+    case 2:
+      free(mountpoint);
+    case 1:
+      free(device);
+    default:
+      break;
     }
-  } while (successfulAssigns > 0);
+  } while (successful_assigns > 0);
 
   fclose(f);
 }

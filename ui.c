@@ -46,7 +46,7 @@ static int cmd_cp_(fm_xfs_t *fm) {
 }
 
 int next_command(fm_xfs_t *fm) {
-  printf("%d>", fm->ino_current_dir);
+  fputs("> ", stdout);
   char *cmd;
   scanf("%ms", &cmd);
 

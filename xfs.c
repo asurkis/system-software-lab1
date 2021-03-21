@@ -234,7 +234,18 @@ fm_xfs_err_t fm_xfs_dir_iter_(fm_xfs_t *fm, void *self, callback_t callback) {
 
 static int fm_xfs_dir_entry_ls_callback_(void *self, void *data) {
   fm_xfs_dir_entry_t *entry = data;
-  printf("%s => %d\n", entry->name, entry->inumber);
+  switch (entry->ftype) {
+  case XFS_DIR3_FT_DIR:
+    fputs("d ", stdout);
+    break;
+  case XFS_DIR3_FT_REG_FILE:
+    fputs("f ", stdout);
+    break;
+  default:
+    fputs("? ", stdout);
+    break;
+  }
+  puts(entry->name);
   return 1;
 }
 
